@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Author: Janki Rangani
+# Student ID: 24095031
+# Description: This script preprocesses a dataset by:
+# - Converting semicolon-separated values to tab-separated
+# - Cleaning non-ASCII and carriage return characters
+# - Replacing decimal commas with dots
+# - Filling missing IDs
+# - Ensuring exactly 14 output columns
+
+# Usage check
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <filename>" >&2
+    exit 1
+fi
+
+file="$1"
+tmpfile=$(mktemp)
+
+# Read and clean the header: remove leading slash and convert delimiter
+read -r header < "$file"
+echo "${header#/}" | tr -d '\r' | tr ';' '\t' > "$tmpfile"
+
+# Process each row after the header
+tail -n +2 "$file" | awk -F';' -v maxid=999999 '
+BEGIN { OFS = "\t" }
+{
+    # Remove carriage returns
+    gsub(/\r/, "")
+
+    # Clean and normalize each field
+    for (i = 1; i <= NF; i++) {
+        # Remove non-ASCII characters
+        gsub(/[^[:print:]\t]/, "", $i)
+
+        # Replace comma decimal with dot
+        if ($i ~ /^[0-9]+,[0-9]+$/) gsub(",", ".", $i)
+    }
+
+    # Fill missing ID
+    if ($1 == "") {
+        maxid++
+        $1 = maxid
+    }
+
+    # Pad to exactly 14 fields (including empty trailing fields)
+    for (i = NF + 1; i <= 14; i++) {
+        $i = ""
+    }
+
+    # Print all 14 fields
+    print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+}' >> "$tmpfile"
+
+
+# Output result and remove temp file
+cat "$tmpfile"
+rm "$tmpfile"

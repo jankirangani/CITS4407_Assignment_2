@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Author: Janki Rangani
+# Student ID: 24095031
+# Description: This script reports the number of empty (missing) cells in each column of a semicolon- or tab-delimited text dataset (e.g., .txt or .tsv).
+
+# Check usage
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <filename> <delimiter>" >&2
+    exit 1
+fi
+
+file="$1"
+delim="$2"
+
+# Extract the header line, remove leading / if present, trim spaces and carriage returns
+header_line=$(head -n 1 "$file" | sed 's/^\/\?//' | tr -d '\r' | sed 's/[[:space:]]*$//')
+
+# Convert header to an array using the specified delimiter
+IFS="$delim" read -r -a headers <<< "$header_line"
+num_cols=${#headers[@]}
+
+# Loop through each column and count empty cells
+for ((i = 1; i <= num_cols; i++)); do
+    col_name="${headers[i-1]}"
+    
+    # Count lines where the field is empty or whitespace-only
+    count=$(tail -n +2 "$file" | cut -d"$delim" -f"$i" | grep -c '^[[:space:]]*$')
+    
+    echo "$col_name: $count"
+done
